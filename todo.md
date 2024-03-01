@@ -2,7 +2,7 @@
 
 This is a list of tasks to be completed for Voxurf during the hackathon.
 
-- [ ] **[SAM]** Set up a basic web extension boilerplate that executes a Rust Wasm binary (using Sycamore) which prints "Hello World!" to the extension's dialogue (make sure this can be installed in the browser); then link this with the `voxurf` library
+- [x] **[SAM]** Set up a basic web extension boilerplate that executes a Rust Wasm binary (using Sycamore) which prints "Hello World!" to the extension's dialogue (make sure this can be installed in the browser); then link this with the `voxurf` library
 - [ ] **[FRITZ]** Create a function in the `voxurf` library that records user audio using the web APIs and then transcribes it to text using Whisper (all in Rust)
 - [ ] **[SAM]** Create a function in `voxurf` that iterates through the tab hierarchy of a website and produces an LLM-ingestable version thereof
 - [ ] **[SAM]** Create a system in `voxurf` that sends this to GPT-3.5/GPT-4 and executes the actions as specified (this could either use an array of actions in JSON or have the AI write a script we run...)

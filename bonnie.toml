@@ -1,0 +1,17 @@
+version="0.3.2"
+
+[scripts]
+# Dependencies: `wasm-pack`
+build.cmd = [
+    "cd packages/voxurf-extension",
+    "wasm-pack build --dev --target web"
+]
+watch = "cargo watch -s \"bonnie build\""
+build.subcommands.--prod = [
+    "cd packages/voxurf-extension",
+    "wasm-pack build --target web"
+]
+prepare = [
+    "cargo install wasm-pack cargo-watch",
+    "cargo build"
+]
