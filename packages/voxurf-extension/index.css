@@ -5,7 +5,6 @@ button {
     border: none;
     cursor:pointer;
 
-    /*background: url(assets/zrolatency_logo_red_back.png) no-repeat;*/
 }
 
 /* Primitive animation feature. */
@@ -23,8 +22,6 @@ button img {
 body {
     width: 400px;
     padding:10px;
-    /*color:#ff3d3d;*/
-    /*background-color: #fff5f5;*/
 }
 
 
