@@ -4,7 +4,8 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 pub fn main() {
     sycamore::render(|cx| {
-        view! { cx, App() }
+        let app_state = create_signal(cx, AppState::Available);
+        view! { cx, App(app_state) }
     });
 }
 
@@ -15,37 +16,36 @@ enum AppState {
 }
 
 #[component]
-fn App<G: Html>(cx: Scope) -> View<G> {
-    let app_state = create_signal(cx, AppState::Listening);
+fn App<G: Html>(cx: Scope, state: &Signal<AppState>) -> View<G> {
     view! { cx,
         div(class="row-arrange") {
             div(class="left") {
                 p(id="transcription") { "Did I hear you right?" }
             }
             div(class="right") {
-                DynamicButton(app_state)
+                DynamicButton(&state)
             }
         }
     }
 }
 
 #[component]
-fn DynamicButton<G: Html>(cx: Scope, state: &ReadSignal<AppState>) -> View<G> {
+fn DynamicButton<G: Html>(cx: Scope, state: &Signal<AppState>) -> View<G> {
     match &*state.get() {
         // TODO: Apply UI in each state.
         AppState::Listening => {
             view! { cx,
-                p { "ListenMode "}
+                button(disabled=true) { button(src="assets/zrolatency_logo_red_back.png") }
             }
         }
         AppState::Processing => {
             view! { cx,
-                p { "ProcessMode "}
+                button(disabled=true) { button(src="assets/zrolatency_logo_red_back.png") }
             }
         }
         AppState::Available => {
             view! { cx,
-                p { "AvailMode "}
+                button(on:click=|_| {state.set(AppState::Listening)}) { button(src="assets/zrolatency_logo_red_back.png") }
             }
         }
     }
