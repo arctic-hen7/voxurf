@@ -1,0 +1,52 @@
+button {
+    width: 120px;
+    height: 120px;
+    background: transparent;
+    border: none;
+    cursor:pointer;
+
+    /*background: url(assets/zrolatency_logo_red_back.png) no-repeat;*/
+}
+
+/* Primitive animation feature. */
+button:hover {
+    opacity: 80%;
+}
+
+button img {
+    object-fit: contain;
+    width: 110px;
+    height: 110px;
+}
+
+
+body {
+    width: 400px;
+    padding:10px;
+    color:#ff3d3d;
+    background-color: #fff5f5;
+}
+
+
+.left {
+    flex-grow: 1;
+    float: left;
+}
+
+#transcription {
+    font-family: sans-serif;
+    font-weight: bolder;
+    font-size: 18px;
+    color: #ff3d3d;
+}
+
+.right {
+    float: right;
+}
+
+.row-arrange {
+    display: inline-block;
+    width: 100%;
+    display: flex;
+}
+
