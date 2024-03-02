@@ -1,0 +1,18 @@
+The following is a nested JSON representation of relevant nodes in the accessibility tree of a website. All provided nodes are focusable. The DOM IDs can be used to reference these elements.
+
+```json
+{{ tree_json }}
+```
+
+Using this, and the following prompt transcribed from a blind user's speech, write some JavaScript code that will execute the action they desire, using the given DOM IDs to reference the right elements. Produce your script inside a Markdown code fence with language `js`. Once your code has been executed, the new page state will be sent back to you for further processing. If you're done with this page,
+
+User's command:
+
+```text
+{{ user_command }}
+```
+
+There might have been some actions that have already been taken to fulfill parts of the user's command. If so, you should continue on from there. Make sure to describe the action your code takes in such a way that it can be appended to the following list, so that, when the page's state updates, I can ask you to do the next part of the action. If you're done, your action description should end with `ACTION_COMPLETE`.
+
+Previous actions taken:
+{{ previous_actions }}
