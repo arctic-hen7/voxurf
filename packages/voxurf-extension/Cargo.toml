@@ -8,7 +8,9 @@ edition = "2021"
 [dependencies]
 sycamore = "0.8"
 wasm-bindgen = "0.2"
+web-extensions-sys = "0.4.1"
 voxurf = { version = "0.1.0", path = "../voxurf" }
+
 
 [lib]
 crate-type = [ "cdylib", "rlib" ]
