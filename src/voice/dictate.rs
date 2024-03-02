@@ -1,25 +1,38 @@
-use super::{Audio, Transcribe, WhisperModel};
+use super::{Audio, Transcriptor};
+use anyhow::bail;
 use std::sync::mpsc::Sender;
 use std::{sync::mpsc::channel, thread::JoinHandle};
 use tempfile::NamedTempFile;
 
 pub struct Dictation {
     recording: Option<Recording>,
+    transcriptor: Transcriptor,
 }
 
 impl Dictation {
-    /// Start a dictation.
-    pub fn start() -> anyhow::Result<Self> {
+    pub fn new() -> anyhow::Result<Self> {
         Ok(Self {
-            recording: Some(Recording::start()?),
+            recording: None,
+            transcriptor: Transcriptor::new()?,
         })
     }
 
+    /// Start a dictation.
+    pub fn start(&mut self) -> anyhow::Result<()> {
+        self.recording = Some(Recording::start()?);
+        Ok(())
+    }
+
     /// End a dictation.
-    pub fn end(&mut self) -> String {
+    pub fn end(&mut self) -> anyhow::Result<String> {
         match self.recording.take() {
-            Some(recording) => recording.end(),
-            None => panic!("cannot end a recording if none was started"),
+            Some(recording) => {
+                let audio_file = recording.end();
+
+                // Now, the audio file should contain the recorded audio, so we can transcribe the result.
+                Ok(self.transcriptor.transcribe(audio_file).unwrap())
+            }
+            None => bail!("cannot end a recording if none was started"),
         }
     }
 }
@@ -53,17 +66,13 @@ impl Recording {
     }
 
     /// Ends the recording, transcribes the audio, and returns the transcribed audio.
-    pub fn end(self) -> String {
+    pub fn end(self) -> NamedTempFile {
         // Notify the recording thread that it should stop recording now.
         let _ = self.end_recording_tx.send(());
 
         // We told the recording thread to stop recording, so it just terminate soon.
         let _ = self.recording_thread_join_handle.join();
 
-        // Now, the audio file should contain the recorded audio, so we can transcribe the result.
-        Transcribe::new(WhisperModel::default())
-            .unwrap()
-            .transcribe(self.audio_file)
-            .unwrap()
+        self.audio_file
     }
 }

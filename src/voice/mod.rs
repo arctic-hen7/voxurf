@@ -6,4 +6,4 @@ mod transcribe;
 pub use audio::Audio;
 pub use dictate::Dictation;
 pub use model::WhisperModel;
-pub use transcribe::Transcribe;
+pub use transcribe::Transcriptor;

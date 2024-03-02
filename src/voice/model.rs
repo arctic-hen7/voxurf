@@ -62,6 +62,8 @@ impl WhisperModel {
 
     /// Downloads this model, without checking whether it exists in the filesystem already.
     pub fn download(&self) -> anyhow::Result<PathBuf> {
+        log::info!("downloading openai whisper model: {}", self.to_identifier());
+
         let model_urls_json: ModelURLs = serde_json::from_str(WHISPER_MODEL_URLS)?;
 
         let model_url = match self {

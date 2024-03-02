@@ -4,12 +4,13 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext};
 use super::WhisperModel;
 use crate::voice::Audio;
 
-pub struct Transcribe {
+pub struct Transcriptor {
     whisper_ctx: WhisperContext,
 }
 
-impl Transcribe {
-    pub fn new(model: WhisperModel) -> anyhow::Result<Self> {
+impl Transcriptor {
+    pub fn new() -> anyhow::Result<Self> {
+        let model = WhisperModel::default();
         let model_path = model.get_or_download()?;
 
         assert!(model_path.exists(), "expected whisper model file to exist");
