@@ -1,4 +1,5 @@
 mod command;
+mod openai;
 
 use sycamore::prelude::*;
 use wasm_bindgen::prelude::*;

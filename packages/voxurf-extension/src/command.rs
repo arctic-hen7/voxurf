@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 
+use crate::openai::OpenAiApi;
+
 /// Maximum number of iterations in tree reconstitution. This prevents infinite loops.
 const MAX_ITERS: usize = 50;
 /// Maximum number of round trips to be made with the LLM.
@@ -373,7 +375,8 @@ async fn execute_command_inner(command: &str) {
 /// action it has taken to further the user's command and the script that will take that
 /// action.
 async fn get_llm_response(prompt: String) -> (String, String) {
-    // TODO
+    // TODO: parse openai's response into tuple
+    let response = OpenAiApi::call(&prompt).await.unwrap();
     (
         "ACTION_COMPLETE".to_string(),
         "console.log(\"Hello, world!\")".to_string(),
