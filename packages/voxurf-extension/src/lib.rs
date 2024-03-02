@@ -1,26 +1,36 @@
 use sycamore::prelude::*;
 use wasm_bindgen::prelude::*;
 
-use voxurf::get_message;
+// Code State
+// enum State {
+//     Listening,
+//     Processing,
+//     Available,
+// }
+
+// impl Display for State {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         match self {
+//             State::Listening => write!(f, "Listening"),
+//             State::Processing => write!(f, "Processing"),
+//             State::Available => write!(f, "Record"),
+//         }
+//     }
+// }
 
 #[wasm_bindgen]
 pub fn main() {
-    // vars to be loaded for script starts
-    let env_vars = 
-
-    // show extension
     sycamore::render(|cx| {
         view! { cx, App() }
     });
-
-    // save vars 
 }
 
 #[component]
 fn App<G: Html>(cx: Scope) -> View<G> {
+    // let interactive = create_memo(cx, || state.get() == State::Available);
     view! {
         cx,
-        p { (get_message()) }
-        button(on:click=|_| { }) { "THE BUTTON" }
+        textarea(readonly=true)
+        button(style="width:100%") { "RECORD"}
     }
 }
