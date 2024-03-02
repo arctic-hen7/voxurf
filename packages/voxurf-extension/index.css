@@ -23,8 +23,8 @@ button img {
 body {
     width: 400px;
     padding:10px;
-    color:#ff3d3d;
-    background-color: #fff5f5;
+    /*color:#ff3d3d;*/
+    /*background-color: #fff5f5;*/
 }
 
 
@@ -38,6 +38,9 @@ body {
     font-weight: bolder;
     font-size: 18px;
     color: #ff3d3d;
+    text-align: center;
+    margin: auto;
+    padding: 50px 0 0 0;
 }
 
 .right {
