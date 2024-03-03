@@ -1,5 +1,5 @@
-use axum::{extract::State, http::StatusCode, routing::get, Json, Router};
-use serde_json::json;
+use axum::{extract::State, http::{StatusCode, Method}, routing::get, Router};
+use tower_http::cors::{CorsLayer, Any};
 use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::Mutex;
 
@@ -13,9 +13,14 @@ pub async fn serve() {
     let dictation = Mutex::new(Dictation::new().await.unwrap());
     let app_state = Arc::new(AppState { dictation });
 
+    let cors = CorsLayer::new()
+        .allow_methods([Method::GET, Method::POST])
+        .allow_origin(Any);
+
     let app = Router::new()
         .route("/start-recording", get(start_recording))
         .route("/end-recording", get(end_recording))
+        .layer(cors)
         .with_state(app_state);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -32,7 +37,7 @@ async fn start_recording(State(state): State<Arc<AppState>>) -> StatusCode {
     let mut dictation = state.dictation.lock().await;
     dictation.start().unwrap();
 
-    StatusCode::ACCEPTED
+    StatusCode::OK
 }
 
 async fn end_recording(State(state): State<Arc<AppState>>) -> (StatusCode, String) {
