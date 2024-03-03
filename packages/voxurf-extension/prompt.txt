@@ -1,4 +1,4 @@
-The following is a nested JSON representation of relevant nodes in the accessibility tree of a website. All provided nodes are focusable. The DOM IDs can be used to reference these elements.
+The following is a nested JSON representation of relevant nodes in the accessibility tree of a website. All provided nodes are focusable. Those elements should be referenced using `document.querySelector(selectorFromId(500))`, where `500` is an example node ID number given below.
 
 ```json
 {{ tree_json }}
