@@ -1,0 +1,49 @@
+button {
+    width: 120px;
+    height: 120px;
+    background: transparent;
+    border: none;
+}
+
+/* Primitive animation feature. */
+button.btn-active:hover {
+    opacity: 80%;
+}
+
+button img {
+    object-fit: contain;
+    width: 110px;
+    height: 110px;
+}
+
+
+body {
+    width: 400px;
+    padding:10px;
+}
+
+
+.left {
+    flex-grow: 1;
+    float: left;
+}
+
+#transcription {
+    font-family: sans-serif;
+    font-weight: bolder;
+    font-size: 18px;
+    text-align: center;
+    margin: auto;
+    padding: 50px 0 0 0;
+}
+
+.right {
+    float: right;
+}
+
+.row-arrange {
+    display: inline-block;
+    width: 100%;
+    display: flex;
+}
+
