@@ -358,7 +358,7 @@ pub async fn execute_command(command: &str) {
                 &if !previous_actions.is_empty() {
                     format!("- {}", previous_actions.join("\n- "))
                 } else {
-                    String::new()
+                    "None".to_string()
                 },
             );
         #[cfg(debug_assertions)]
@@ -416,6 +416,7 @@ async fn get_llm_response(prompt: String) -> (String, String) {
 
         (remaining_response.to_string(), code.to_string())
     } else {
+        log(&response);
         panic!("invalid response from llm");
     }
 }
