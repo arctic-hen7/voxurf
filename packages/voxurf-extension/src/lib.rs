@@ -29,44 +29,39 @@ fn App<G: Html>(cx: Scope) -> View<G> {
     let state = create_signal(cx, AppState::Idle);
 
     view! { cx,
-        div(class="row-arrange") {
-            div(class="left") {
-                p(id="transcription") { "Did I hear you right?" }
-            }
-            div(class="right") {
-                button(
-                    class = format!(
-                        "rounded-full h-24 w-24 p-2 {}",
-                        match *state.get() {
-                            AppState::Idle => "bg-red-500",
-                            AppState::Recording => "bg-blue-500",
-                            AppState::Executing => "bg-emerald-500",
-                        }
-                    ),
-                    disabled = *state.get() == AppState::Executing,
-                    on:click = move |_| {
-                        sycamore::futures::spawn_local_scoped(cx, async move {
-                            match *state.get() {
-                                AppState::Idle => {
-                                    // Set the state *after* we're ready to record to avoid
-                                    // speaking before recording
-                                    start_recording().await;
-                                    state.set(AppState::Recording);
-                                },
-                                AppState::Recording => {
-                                    // Set the state *before* we start working so we encapsulate
-                                    // everything in the execution phase
-                                    state.set(AppState::Executing);
-                                    let command = stop_recording().await;
-                                    execute_command(&command).await;
-                                },
-                                AppState::Executing => unreachable!(),
-                            }
-                        });
+        div(class="right") {
+            button(
+                class = format!(
+                    "rounded-full h-24 w-24 p-2 {}",
+                    match *state.get() {
+                        AppState::Idle => "bg-red-500",
+                        AppState::Recording => "bg-blue-500",
+                        AppState::Executing => "bg-emerald-500",
                     }
-                ) {
-                    img(src = "assets/logo_core.webp") {}
+                ),
+                disabled = *state.get() == AppState::Executing,
+                on:click = move |_| {
+                    sycamore::futures::spawn_local_scoped(cx, async move {
+                        match *state.get() {
+                            AppState::Idle => {
+                                // Set the state *after* we're ready to record to avoid
+                                // speaking before recording
+                                start_recording().await;
+                                state.set(AppState::Recording);
+                            },
+                            AppState::Recording => {
+                                // Set the state *before* we start working so we encapsulate
+                                // everything in the execution phase
+                                state.set(AppState::Executing);
+                                let command = stop_recording().await;
+                                execute_command(&command).await;
+                            },
+                            AppState::Executing => unreachable!(),
+                        }
+                    });
                 }
+            ) {
+                img(src = "assets/logo_core.webp") {}
             }
         }
     }
