@@ -1,8 +1,16 @@
 use sycamore::{component, prelude::*, view};
+=======
+mod command;
+mod openai;
+
+use sycamore::prelude::*;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub fn main() {
+    #[cfg(debug_assertions)]
+    console_error_panic_hook::set_once();
+
     sycamore::render(|cx| {
         view! { cx, App() }
     });
@@ -16,6 +24,7 @@ enum AppState {
 
 #[component]
 fn App<G: Html>(cx: Scope) -> View<G> {
+<<<<<<< HEAD
     view! { cx,
         div(class="row-arrange") {
             div(class="left") {
@@ -60,5 +69,10 @@ fn DynamicButton<G: Html>(cx: Scope) -> View<G> {
                 }
             }
         })
-    }
+    // from merge, dunno what this does.
+    // command::execute_command("Send an email to John.".to_string());
+    // view! {
+    //     cx,
+    //     p { (get_message()) }
+    // }
 }
