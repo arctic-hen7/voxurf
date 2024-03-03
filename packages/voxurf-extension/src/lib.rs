@@ -18,7 +18,7 @@ pub fn main() {
 
 #[component]
 fn App<G: Html>(cx: Scope) -> View<G> {
-    command::execute_command("Send an email to John.".to_string());
+    command::execute_command("Get rid of the sidebar on this website.".to_string());
     view! {
         cx,
         p { (get_message()) }

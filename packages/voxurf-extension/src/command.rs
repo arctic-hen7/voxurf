@@ -1,4 +1,4 @@
-use regex::{Regex, Captures};
+use regex::{Captures, Regex};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
@@ -58,7 +58,8 @@ impl AxNode {
                 props
                     .iter()
                     .any(|prop| prop.name == "focusable" && prop.value.value.0 == JsValue::TRUE)
-            }) || self.ignored || role.as_ref().is_some_and(|r| r == "RootWebArea"),
+            }) || self.ignored
+                || role.as_ref().is_some_and(|r| r == "RootWebArea"),
             // Only ones that need the default will be later filtered out
             dom_id: self.backend_dom_node_id.unwrap_or(0),
             name: self.name.map(|val| val.value.0.as_string()).flatten(),
@@ -191,7 +192,7 @@ impl Node {
     }
 }
 
-#[wasm_bindgen(module = "/src/ax.js")]
+#[wasm_bindgen(module = "/src/glue.js")]
 extern "C" {
     async fn attach_debugger(tab_id: u32);
     async fn detach_debugger(tab_id: u32);
@@ -310,7 +311,10 @@ async fn get_ax_tree(tab_id: u32) -> (Vec<Node>, HashMap<u32, String>) {
     dom_enable(tab_id).await;
     let mut dom_id_map = HashMap::new();
     for dom_id in dom_ids {
-        let selector = dom_id_to_selector(dom_id, tab_id).await.as_string().unwrap();
+        let selector = dom_id_to_selector(dom_id, tab_id)
+            .await
+            .as_string()
+            .unwrap();
         dom_id_map.insert(dom_id, selector);
     }
     dom_disable(tab_id).await;
@@ -364,6 +368,7 @@ async fn execute_command_inner(command: &str) {
                     String::new()
                 },
             );
+        #[cfg(debug_assertions)]
         log(&prompt);
 
         // Send the prompt to the LLM, extracting its description of the actions it
@@ -375,8 +380,10 @@ async fn execute_command_inner(command: &str) {
             .unwrap()
             .replace_all(&response_script, |caps: &Captures| {
                 // If this fails, the LLM is referencing a nonexistent node
-                dom_id_map.get(&caps[1].parse().unwrap()).unwrap()
+                format!("'{}'", dom_id_map.get(&caps[1].parse().unwrap()).unwrap())
             });
+        #[cfg(debug_assertions)]
+        log(&response_script);
 
         // This uses the debugger API
         execute_js(tab_id, &response_script).await;
@@ -385,13 +392,13 @@ async fn execute_command_inner(command: &str) {
         detach_debugger(tab_id).await;
 
         // If the LLM thinks it's done, finish, otherwise keep going
-        if action_description.contains("ACTION_COMPLETE") {
-            action_complete = true;
-            break;
-        } else {
+        if action_description.contains("CONTINUE") {
             // We'll add the action description to our list, and do everything again
             previous_actions.push(action_description);
             num_trips += 1;
+        } else {
+            action_complete = true;
+            break;
         }
     }
 
@@ -404,10 +411,18 @@ async fn execute_command_inner(command: &str) {
 /// action it has taken to further the user's command and the script that will take that
 /// action.
 async fn get_llm_response(prompt: String) -> (String, String) {
-    // TODO: parse openai's response into tuple
     let response = OpenAiApi::call(&prompt).await.unwrap();
-    (
-        "ACTION_COMPLETE".to_string(),
-        "console.log(\"Hello, world!\")".to_string(),
-    )
+    // Define a regular expression for matching JS code fence
+    let re = Regex::new(r"```js\n([\s\S]+?)\n```").unwrap();
+
+    // Attempt to find a match in the response
+    if let Some(captures) = re.captures(&response) {
+        // Extract code and description
+        let code = captures.get(1).unwrap().as_str();
+        let remaining_response = &response[captures.get(0).unwrap().end()..].trim();
+
+        (remaining_response.to_string(), code.to_string())
+    } else {
+        panic!("invalid response from llm");
+    }
 }
