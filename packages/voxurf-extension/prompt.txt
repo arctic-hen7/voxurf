@@ -11,7 +11,7 @@ Using this, and the following prompt transcribed from the user's speech, write s
 User's command:
 
 ```text
-Get rid of the sidebar on this site.
+{{ user_command }}
 ```
 
 The following are the actions which have already been taken:
