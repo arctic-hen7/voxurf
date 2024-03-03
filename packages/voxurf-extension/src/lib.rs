@@ -39,6 +39,7 @@ fn DynamicButton<G: Html>(cx: Scope) -> View<G> {
                     button(disabled=true) {
                         // TODO: Need an animation
                         img(src="assets/zrolatency_logo_blue_back.png")
+                        p { "Recording..." }
                     }
                 }
             }
@@ -46,7 +47,9 @@ fn DynamicButton<G: Html>(cx: Scope) -> View<G> {
                 view! { cx,
                     button(disabled=true) {
                         img(src="assets/zrolatency_logo_blue_back.png")
+                        p { "Processing." }
                     }
+
                 }
             }
             AppState::Available => {
