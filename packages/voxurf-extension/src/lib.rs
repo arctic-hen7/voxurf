@@ -4,8 +4,7 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 pub fn main() {
     sycamore::render(|cx| {
-        let app_state = create_signal(cx, AppState::Available);
-        view! { cx, App(app_state) }
+        view! { cx, App() }
     });
 }
 
@@ -16,37 +15,47 @@ enum AppState {
 }
 
 #[component]
-fn App<G: Html>(cx: Scope, state: &Signal<AppState>) -> View<G> {
+fn App<G: Html>(cx: Scope) -> View<G> {
     view! { cx,
         div(class="row-arrange") {
             div(class="left") {
                 p(id="transcription") { "Did I hear you right?" }
             }
             div(class="right") {
-                DynamicButton(&state)
+                DynamicButton()
             }
         }
     }
 }
 
 #[component]
-fn DynamicButton<G: Html>(cx: Scope, state: &Signal<AppState>) -> View<G> {
-    match &*state.get() {
-        // TODO: Apply UI in each state.
-        AppState::Listening => {
-            view! { cx,
-                button(disabled=true) { button(src="assets/zrolatency_logo_red_back.png") }
+fn DynamicButton<G: Html>(cx: Scope) -> View<G> {
+    let app_state = create_signal(cx, AppState::Available);
+    // create_effect(cx, || {});
+    view! { cx,
+        (match &*app_state.get() {
+            AppState::Listening => {
+                view! { cx,
+                    button(disabled=true) {
+                        // TODO: Need an animation
+                        img(src="assets/zrolatency_logo_blue_back.png")
+                    }
+                }
             }
-        }
-        AppState::Processing => {
-            view! { cx,
-                button(disabled=true) { button(src="assets/zrolatency_logo_red_back.png") }
+            AppState::Processing => {
+                view! { cx,
+                    button(disabled=true) {
+                        img(src="assets/zrolatency_logo_blue_back.png")
+                    }
+                }
             }
-        }
-        AppState::Available => {
-            view! { cx,
-                button(on:click=|_| {state.set(AppState::Listening)}) { button(src="assets/zrolatency_logo_red_back.png") }
+            AppState::Available => {
+                view! { cx,
+                    button(on:click=|_| {app_state.set(AppState::Listening)}, class="btn-active") {
+                        img(src="assets/zrolatency_logo_red_back.png", id="button_record")
+                    }
+                }
             }
-        }
+        })
     }
 }

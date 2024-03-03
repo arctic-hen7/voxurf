@@ -3,12 +3,10 @@ button {
     height: 120px;
     background: transparent;
     border: none;
-    cursor:pointer;
-
 }
 
 /* Primitive animation feature. */
-button:hover {
+button.btn-active:hover {
     opacity: 80%;
 }
 
@@ -34,7 +32,6 @@ body {
     font-family: sans-serif;
     font-weight: bolder;
     font-size: 18px;
-    color: #ff3d3d;
     text-align: center;
     margin: auto;
     padding: 50px 0 0 0;
