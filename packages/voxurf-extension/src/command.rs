@@ -309,7 +309,6 @@ async fn get_ax_tree(tab_id: u32) -> (Vec<Node>, HashMap<u32, String>) {
     let mut dom_id_map = HashMap::new();
     for dom_id in dom_ids {
         let selector = dom_id_to_selector(dom_id, tab_id).await.as_string().unwrap();
-        log(&selector);
         dom_id_map.insert(dom_id, selector);
     }
     dom_disable(tab_id).await;
@@ -344,9 +343,6 @@ async fn execute_command_inner(command: &str) {
         attach_debugger(tab_id).await;
 
         let (tree, dom_id_map) = get_ax_tree(tab_id).await;
-        // Detach the debugger immediately so the extension works if the user presses
-        // the button again
-        detach_debugger(tab_id).await;
 
         // Construct the prompt for the LLM
         let mut tree_str = String::new();
@@ -380,7 +376,11 @@ async fn execute_command_inner(command: &str) {
                 dom_id_map.get(&caps[1].parse().unwrap()).unwrap()
             });
 
+        // This uses the debugger API
         execute_js(tab_id, &response_script).await;
+        // Detach the debugger immediately so the extension works if the user presses
+        // the button again
+        detach_debugger(tab_id).await;
 
         // If the LLM thinks it's done, finish, otherwise keep going
         if action_description.contains("ACTION_COMPLETE") {

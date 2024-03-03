@@ -89,13 +89,13 @@ export function dom_id_to_selector(id, tabId) {
   });
 }
 
-// TODO Make this work
 export function execute_js(tabId, script) {
   return new Promise((resolve, reject) => {
-    chrome.scripting.executeScript({
-      target: { tabId },
-      func: eval,
-      args: [ script ]
-    }, () => resolve());
+    chrome.debugger.sendCommand(
+      { tabId },
+      "Runtime.evaluate",
+      { expression: script, userGesture: true },
+      () => resolve()
+    )
   });
 }

@@ -13,7 +13,6 @@
   "permissions": [
     "debugger",
     "tabs",
-    "scripting",
     "activeTab"
   ]
 }
