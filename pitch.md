@@ -4,13 +4,13 @@
 
 Right now, assistive technology on the web consists largely of using a screen reader to read content to you, and then touch-typing or using a Braille keyboard to *act* on a website, which is totally impractical for those with acquired visual impairment, especially the elderly.
 
-Voxurf is a web extension, built entirely in Rust, that provides a simple interface where users can speak a command, and this is interpreted by an AI in the context of a simplified version of the active webpage. It then executes actions corresponding to the parts of the user's command, allowing the blind and visually impaired to act in a way screen readers could never allow.
+Voxurf is a web extension, built entirely in Rust, that provides a simple interface where users can speak a command, which is interpreted by an AI in the context of a simplified version of the active webpage. It then executes actions corresponding to the parts of the user's command, allowing the blind and visually impaired to act in a way screen readers could never allow.
 
 ## How we built it
 
 We were committed to doing this entire project in Rust for extreme speed and safety, so we began by setting up a web extension that uses Rust to do everything, from rendering the popup to interacting with the browser. After writing a little bit of glue code and wading through some content security policy documentation, we got this working pretty quickly, and proceeded on to get transcription and website structure extraction working. One member of our team worked on a server that would support transcribing speech to text using OpenAI's Whisper model, all completely locally, while another worked on the UI and another on the extraction component.
 
-By using Chrome's DevTools protocol, we were able to extract the browser's computed accessibility tree, which then needed to be deserialised into Rust, and filtered to remove irrelevant elements. Once this was done (which took unreasonably long, thank you JS types and Chrome docs), we formatted this in a way an LLM could ingest and engineered a prompt that would get it to produce some JavaScript code that would execute the actions the user's command corresponded to.
+By using Chrome's DevTools protocol, we were able to extract the browser's computed accessibility tree, which then needed to be deserialised into an appropriate data structure in Rust, and filtered to remove irrelevant elements. Once this was done (which took unreasonably long, thank you JS types and Chrome docs), we formatted this in a way an LLM could ingest, and engineered a prompt that would get it to produce some JavaScript code that would execute the actions the user's command corresponded to.
 
 For that, we needed to implement a system that resolved the *backend* IDs the accessibility API returns into *frontend* IDs that could be used to reference the nodes in the DOM API, and then we needed to add *attributes* to those nodes so the JS code could reference these. Again, thank you Chrome.
 
