@@ -35,9 +35,7 @@ async fn start_recording(State(state): State<Arc<AppState>>) -> StatusCode {
     StatusCode::ACCEPTED
 }
 
-async fn end_recording(
-    State(state): State<Arc<AppState>>,
-) -> (StatusCode, Json<serde_json::Value>) {
+async fn end_recording(State(state): State<Arc<AppState>>) -> (StatusCode, String) {
     log::info!("Ending recording");
 
     let mut dictation = state.dictation.lock().await;
@@ -48,18 +46,12 @@ async fn end_recording(
                 "Recording ended successfully, transcription: {}",
                 transcription
             );
-            (
-                StatusCode::OK,
-                Json(json!({ "transcription": transcription })),
-            )
+            (StatusCode::OK, transcription)
         }
         Err(e) => {
             let error_msg = format!("Failed to end recoridng: {:?}", e);
             log::error!("{}", error_msg);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error_msg })),
-            )
+            panic!("{}", error_msg);
         }
     }
 }
