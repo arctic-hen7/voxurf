@@ -1,7 +1,6 @@
 use axum::{extract::State, http::StatusCode, routing::get, Json, Router};
-use serde::Serialize;
 use serde_json::json;
-use std::sync::Arc;
+use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::Mutex;
 
 use crate::voice::Dictation;
@@ -11,7 +10,7 @@ struct AppState {
 }
 
 pub async fn serve() {
-    let dictation = Mutex::new(Dictation::new().unwrap());
+    let dictation = Mutex::new(Dictation::new().await.unwrap());
     let app_state = Arc::new(AppState { dictation });
 
     let app = Router::new()
@@ -19,12 +18,17 @@ pub async fn serve() {
         .route("/end-recording", get(end_recording))
         .with_state(app_state);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+
+    log::info!("Starting server at {}", addr);
 
     axum::serve(listener, app).await.unwrap();
 }
 
 async fn start_recording(State(state): State<Arc<AppState>>) -> StatusCode {
+    log::info!("Starting recording");
+
     let mut dictation = state.dictation.lock().await;
     dictation.start().unwrap();
 
@@ -34,6 +38,8 @@ async fn start_recording(State(state): State<Arc<AppState>>) -> StatusCode {
 async fn end_recording(
     State(state): State<Arc<AppState>>,
 ) -> (StatusCode, Json<serde_json::Value>) {
+    log::info!("Ending recording");
+
     let mut dictation = state.dictation.lock().await;
 
     match dictation.end() {
@@ -48,10 +54,11 @@ async fn end_recording(
             )
         }
         Err(e) => {
-            log::error!("Failed to end recording: {:?}", e);
+            let error_msg = format!("Failed to end recoridng: {:?}", e);
+            log::error!("{}", error_msg);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": "Failed to end recording" })),
+                Json(json!({ "error": error_msg })),
             )
         }
     }

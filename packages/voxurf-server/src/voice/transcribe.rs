@@ -9,19 +9,30 @@ pub struct Transcriptor {
 }
 
 impl Transcriptor {
-    pub fn new() -> anyhow::Result<Self> {
+    pub async fn new() -> anyhow::Result<Self> {
         let model = WhisperModel::default();
-        let model_path = model.get_or_download()?;
+        let model_path = model.get_or_download().await?;
 
         assert!(model_path.exists(), "expected whisper model file to exist");
+        log::info!(
+            "initializing whisper with model at path: {}",
+            model_path.display()
+        );
 
         let whisper_ctx = WhisperContext::new(&model_path.to_string_lossy())?;
+
+        log::info!("whisper setup succeeded");
 
         Ok(Self { whisper_ctx })
     }
 
     /// Transcribes the audio in the given file to a string of text.
     pub fn transcribe<P: AsRef<Path>>(&self, audio_file: P) -> anyhow::Result<String> {
+        assert!(
+            audio_file.as_ref().exists(),
+            "expected input audio file to exist"
+        );
+
         let mut state = self.whisper_ctx.create_state()?;
 
         // Sampling parameters for the model.
@@ -33,11 +44,6 @@ impl Transcriptor {
         params.set_print_progress(false);
         params.set_print_realtime(false);
         params.set_print_timestamps(false);
-
-        assert!(
-            audio_file.as_ref().exists(),
-            "expected input audio file to exist"
-        );
 
         let audio = Audio::from_file(audio_file);
 

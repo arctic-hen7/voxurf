@@ -10,10 +10,10 @@ pub struct Dictation {
 }
 
 impl Dictation {
-    pub fn new() -> anyhow::Result<Self> {
+    pub async fn new() -> anyhow::Result<Self> {
         Ok(Self {
             recording: None,
-            transcriptor: Transcriptor::new()?,
+            transcriptor: Transcriptor::new().await?,
         })
     }
 
@@ -29,8 +29,10 @@ impl Dictation {
             Some(recording) => {
                 let audio_file = recording.end();
 
+                log::info!("Starting transcription");
+
                 // Now, the audio file should contain the recorded audio, so we can transcribe the result.
-                Ok(self.transcriptor.transcribe(audio_file).unwrap())
+                Ok(self.transcriptor.transcribe(audio_file)?)
             }
             None => bail!("cannot end a recording if none was started"),
         }

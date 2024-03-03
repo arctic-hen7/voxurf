@@ -1,5 +1,8 @@
+use futures::stream::StreamExt;
 use serde::Deserialize;
 use std::path::PathBuf;
+use tokio::fs::File;
+use tokio::io::AsyncWriteExt;
 
 const WHISPER_MODEL_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/whisper-models/");
 const WHISPER_MODEL_URLS: &str = include_str!("../../assets/whisper-models-urls.json");
@@ -36,11 +39,11 @@ impl WhisperModel {
     }
 
     /// Gets the path to this model. If it doesn't exist, it will be downloaded.
-    pub fn get_or_download(&self) -> anyhow::Result<PathBuf> {
+    pub async fn get_or_download(&self) -> anyhow::Result<PathBuf> {
         if let Some(path) = self.get()? {
             Ok(path)
         } else {
-            self.download()
+            self.download().await
         }
     }
 
@@ -61,8 +64,9 @@ impl WhisperModel {
     }
 
     /// Downloads this model, without checking whether it exists in the filesystem already.
-    pub fn download(&self) -> anyhow::Result<PathBuf> {
-        log::info!("downloading openai whisper model: {}", self.to_identifier());
+    pub async fn download(&self) -> anyhow::Result<PathBuf> {
+        let whisper_model_dir_path = PathBuf::from(WHISPER_MODEL_DIR);
+        let download_path = whisper_model_dir_path.join(format!("{}.bin", self.to_identifier()));
 
         let model_urls_json: ModelURLs = serde_json::from_str(WHISPER_MODEL_URLS)?;
 
@@ -74,20 +78,30 @@ impl WhisperModel {
             WhisperModel::WhisperLarge => model_urls_json.whisper_large,
         };
 
-        let client = reqwest::blocking::Client::new();
+        log::info!(
+            "downloading openai whisper model named: {} to file path: {} from url: {}",
+            self.to_identifier(),
+            download_path.display(),
+            model_url
+        );
+
+        let client = reqwest::Client::new();
 
         // Get the model index first and resolve the URL for the model
-        let response = client.get(model_url).send()?;
+        let response = client.get(model_url).send().await?;
         if !response.status().is_success() {
             panic!("failed to download model");
         }
 
-        let whisper_model_dir_path = PathBuf::from(WHISPER_MODEL_DIR);
-        let download_path = whisper_model_dir_path.join(format!("{}.bin", self.to_identifier()));
+        // Stream the response into the target file (it's a model, it will be big)
+        let mut file = File::create(&download_path).await?;
+        let mut body = response.bytes_stream();
+        while let Some(chunk) = body.next().await {
+            let chunk = chunk?;
+            file.write_all(&chunk).await?;
+        }
 
-        let content = response.text()?;
-
-        std::fs::write(&download_path, content)?;
+        log::info!("finished downloading openai whisper model");
 
         Ok(download_path)
     }
