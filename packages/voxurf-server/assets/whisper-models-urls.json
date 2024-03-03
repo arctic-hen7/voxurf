@@ -1,0 +1,7 @@
+{
+    "whisper_tiny": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin",
+    "whisper_base": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin",
+    "whisper_small": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin",
+    "whisper_medium": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.en.bin",
+    "whisper_large": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large.bin"
+}
