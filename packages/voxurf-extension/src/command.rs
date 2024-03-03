@@ -331,14 +331,7 @@ async fn get_ax_tree(tab_id: u32) -> (Vec<Node>, HashMap<u32, String>) {
 
 /// Executes the given command against the page's accessibility tree, calling out
 /// to an LLM for processing.
-pub fn execute_command(command: String) {
-    wasm_bindgen_futures::spawn_local(async move {
-        execute_command_inner(&command).await;
-    });
-}
-
-/// Internal asynchronous implementation of [`execute_command`].
-async fn execute_command_inner(command: &str) {
+pub async fn execute_command(command: &str) {
     let mut previous_actions = Vec::new();
 
     let mut num_trips = 0;

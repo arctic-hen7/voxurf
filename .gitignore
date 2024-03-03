@@ -1,3 +1,4 @@
 target/
 assets/whisper-models
 Cargo.lock
+tailwind.css
