@@ -31,6 +31,34 @@ export function get_tab_id() {
   });
 }
 
+export function click_element(tabId, selector) {
+  return new Promise((resolve, reject) => {
+    chrome.scripting.executeScript({
+      target: { tabId },
+      func: host_click,
+      args: [ selector ],
+    }, () => resolve())
+  })
+}
+export function fill_element(tabId, selector, text) {
+  return new Promise((resolve, reject) => {
+    chrome.scripting.executeScript({
+      target: { tabId },
+      func: host_fill,
+      args: [ selector, text ],
+    }, () => resolve())
+  })
+}
+
+// --- These will be executed in the host ---
+function host_click(selector) {
+  document.querySelector(selector).click()
+}
+function host_fill(selector, text) {
+  document.querySelector(selector).value = text;
+}
+// --- End functions to be executed in the host ---
+
 export function dom_enable(tabId) {
   return new Promise((resolve, reject) => {
     chrome.debugger.sendCommand(
@@ -77,8 +105,8 @@ export function dom_id_to_selector(id, tabId) {
                 chrome.debugger.sendCommand(
                   { tabId },
                   "DOM.setAttributeValue",
-                  { nodeId, name: "data-voxurf-id", value: `${nodeId}` },
-                  () => resolve(`[data-voxurf-id="${nodeId}"]`)
+                  { nodeId, name: "data-voxurf-id", value: `${id}` },
+                  () => resolve(`[data-voxurf-id='${id}']`)
                 );
               }
             );

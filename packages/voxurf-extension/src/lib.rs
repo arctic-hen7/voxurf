@@ -54,7 +54,7 @@ fn App<G: Html>(cx: Scope) -> View<G> {
                                 // everything in the execution phase
                                 state.set(AppState::Executing);
                                 let command = stop_recording().await;
-                                execute_command(&command).await;
+                                execute_command("Go to the profile section and change my name to John.").await;
                             },
                             AppState::Executing => unreachable!(),
                         }

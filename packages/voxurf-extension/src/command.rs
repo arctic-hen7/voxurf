@@ -1,4 +1,4 @@
-use regex::{Captures, Regex};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
@@ -8,7 +8,16 @@ use crate::openai::OpenAiApi;
 /// Maximum number of iterations in tree reconstitution. This prevents infinite loops.
 const MAX_ITERS: usize = 50;
 /// Maximum number of round trips to be made with the LLM.
-const MAX_TRIPS: usize = 5;
+const MAX_TRIPS: usize = 2;
+
+/// The number of milliseconds to wait at a maximum for the page layout to stabilise after
+/// an interaction. If this is reached, the user's command will be aborted in a possibly
+/// broken state.
+const STABILITY_TIMEOUT: usize = 10_000;
+/// A number of milliseconds after which future accessibility trees will not be observed.
+/// Once a change is observed from the old tree, we will wait this long for a new change,
+/// and, if one is not observed, we'll consider the page stable.
+const STABILITY_THRESHOLD: usize = 250;
 
 /// Prompt for the LLM
 static PROMPT: &str = include_str!("../prompt.txt");
@@ -132,7 +141,7 @@ impl IntermediateNode {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, PartialEq, Eq)]
 struct Node {
     dom_id: u32,
     name: Option<String>,
@@ -145,25 +154,25 @@ struct Node {
 impl Node {
     /// Converts the node into a string suitable for LLM ingestion. This deliberately elides
     /// irrelevant information to save on tokens.
-    fn into_string(self, indent_level: usize) -> String {
+    fn to_string(&self, indent_level: usize) -> String {
         format!(
             "{tabs}- [{id}] \"{name}\"{role}{desc}{props}{value}{children}",
             tabs = "\t".repeat(indent_level),
             id = self.dom_id,
-            name = self.name.unwrap_or("<null>".to_string()),
-            role = if let Some(role) = self.role {
+            name = self.name.as_ref().map(|s| s.as_str()).unwrap_or("<null>"),
+            role = if let Some(role) = &self.role {
                 format!(" ({role})")
             } else {
                 String::new()
             },
-            desc = if let Some(desc) = self.description {
+            desc = if let Some(desc) = &self.description {
                 format!(" ({desc})")
             } else {
                 String::new()
             },
             props = if !self.properties.is_empty() {
                 let mut s = " {".to_string();
-                for (key, val) in self.properties {
+                for (key, val) in &self.properties {
                     s.push_str(&key);
                     s.push_str(": ");
                     s.push_str(&val);
@@ -173,16 +182,16 @@ impl Node {
             } else {
                 String::new()
             },
-            value = if let Some(val) = self.value {
+            value = if let Some(val) = &self.value {
                 format!(" with value {val}")
             } else {
                 String::new()
             },
             children = if !self.children.is_empty() {
                 let mut children_str = String::new();
-                for child in self.children {
+                for child in &self.children {
                     children_str.push('\n');
-                    children_str.push_str(&child.into_string(indent_level + 1));
+                    children_str.push_str(&child.to_string(indent_level + 1));
                 }
                 children_str
             } else {
@@ -198,6 +207,9 @@ extern "C" {
     async fn detach_debugger(tab_id: u32);
     async fn get_tab_id() -> JsValue;
     async fn get_raw_ax_tree(tab_id: u32) -> JsValue;
+    async fn click_element(tab_id: u32, selector: &str);
+    async fn fill_element(tab_id: u32, selector: &str, text: &str);
+
     async fn execute_js(tab_id: u32, script: &str);
     async fn dom_enable(tab_id: u32);
     async fn dom_disable(tab_id: u32);
@@ -210,8 +222,9 @@ extern "C" {
 }
 
 /// Gets the accessibility tree and filters it, preparing it in a format
-/// digestible by an LLM. This also returns a map of DOM IDs to CSS selectors.
-async fn get_ax_tree(tab_id: u32) -> (Vec<Node>, HashMap<u32, String>) {
+/// digestible by an LLM. This also returns a list of the backend DOM node
+/// IDs referenced in the tree.
+async fn get_ax_tree(tab_id: u32) -> (Vec<Node>, Vec<u32>) {
     let tree = get_raw_ax_tree(tab_id).await;
     let tree: AxTree = serde_wasm_bindgen::from_value(tree).unwrap();
     // Filter and parse the tree into our own `Node` struct; this will be "flat"
@@ -305,20 +318,6 @@ async fn get_ax_tree(tab_id: u32) -> (Vec<Node>, HashMap<u32, String>) {
         );
     }
 
-    // Map the DOM IDs to CSS query selectors; this will work for all our selected nodes
-    // because focusable nodes are guaranteed to exist on the page (apart from the root,
-    // which we've filtered out)
-    dom_enable(tab_id).await;
-    let mut dom_id_map = HashMap::new();
-    for dom_id in dom_ids {
-        let selector = dom_id_to_selector(dom_id, tab_id)
-            .await
-            .as_string()
-            .unwrap();
-        dom_id_map.insert(dom_id, selector);
-    }
-    dom_disable(tab_id).await;
-
     #[cfg(debug_assertions)]
     log(&format!(
         "Total nodes {} reduced to {} relevant nodes",
@@ -326,12 +325,14 @@ async fn get_ax_tree(tab_id: u32) -> (Vec<Node>, HashMap<u32, String>) {
         num_inserted
     ));
 
-    (tree, dom_id_map)
+    (tree, dom_ids)
 }
 
 /// Executes the given command against the page's accessibility tree, calling out
 /// to an LLM for processing.
-pub async fn execute_command(command: &str) {
+///
+/// This returns a description of all the actions the LLM took.
+pub async fn execute_command(command: &str) -> String {
     let mut previous_actions = Vec::new();
 
     let mut num_trips = 0;
@@ -341,82 +342,212 @@ pub async fn execute_command(command: &str) {
         let tab_id = get_tab_id().await.as_f64().unwrap() as u32;
         attach_debugger(tab_id).await;
 
-        let (tree, dom_id_map) = get_ax_tree(tab_id).await;
+        let (tree, dom_ids) = get_ax_tree(tab_id).await;
+        // Map the DOM IDs to CSS query selectors; this will work for all our selected nodes
+        // because focusable nodes are guaranteed to exist on the page (apart from the root,
+        // which we've filtered out).
+        //
+        // We do this *after* we know the page to be stable to avoid unnecessary work.
+        dom_enable(tab_id).await;
+        let mut dom_id_map = HashMap::new();
+        for dom_id in dom_ids {
+            let selector = dom_id_to_selector(dom_id, tab_id)
+                .await
+                .as_string()
+                .unwrap();
+            dom_id_map.insert(dom_id, selector);
+        }
+        dom_disable(tab_id).await;
+        detach_debugger(tab_id).await;
 
         // Construct the prompt for the LLM
         let mut tree_str = String::new();
         for node in tree {
-            tree_str.push_str(&node.into_string(0));
+            tree_str.push_str(&node.to_string(0));
             tree_str.push('\n');
         }
         let tree_str = tree_str.trim();
         let prompt = PROMPT
-            .replace("{{ tree_json }}", &tree_str)
+            .replace("{{ tree_text }}", &tree_str)
             .replace("{{ user_command }}", command)
             .replace(
                 "{{ previous_actions }}",
                 &if !previous_actions.is_empty() {
                     format!("- {}", previous_actions.join("\n- "))
                 } else {
-                    "None".to_string()
+                    String::new()
                 },
             );
+        // Cut the prompt off before the previous actions if we have none
+        let prompt = if previous_actions.is_empty() {
+            prompt.split("{{ previous_actions_cutoff }}").next().unwrap().trim().to_string()
+        } else {
+            prompt.replace("{{ previous_actions_cutoff }}", "")
+        };
         #[cfg(debug_assertions)]
         log(&prompt);
 
-        // Send the prompt to the LLM, extracting its description of the actions it
-        // has taken and the script that wil ltake those actions
-        let (action_description, response_script) = get_llm_response(prompt).await;
+        // Send the prompt to the LLM, parsing from it the actions to be taken
+        let actions = get_llm_response(&prompt).await;
+        log(&format!("{:#?}", &actions));
+        actions.execute(&dom_id_map, tab_id).await;
+        // Add this *after* we've executed the actions so only the successful ones are described
+        // (partial group executions will lead to issues here, but that's okay)
+        previous_actions.push(actions.description);
 
-        // Resolve DOM node IDs to CSS query selectors in the script
-        let response_script = Regex::new(r#"selectorFromId\((\d+)\)"#)
-            .unwrap()
-            .replace_all(&response_script, |caps: &Captures| {
-                // If this fails, the LLM is referencing a nonexistent node
-                format!("'{}'", dom_id_map.get(&caps[1].parse().unwrap()).unwrap())
-            });
-        #[cfg(debug_assertions)]
-        log(&response_script);
-
-        // This uses the debugger API
-        execute_js(tab_id, &response_script).await;
-        // Detach the debugger immediately so the extension works if the user presses
-        // the button again
-        detach_debugger(tab_id).await;
-
-        // If the LLM thinks it's done, finish, otherwise keep going
-        if action_description.contains("CONTINUE") {
-            // We'll add the action description to our list, and do everything again
-            previous_actions.push(action_description);
-            num_trips += 1;
-        } else {
+        if actions.complete {
             action_complete = true;
             break;
+        } else {
+            num_trips += 1;
         }
     }
 
     if !action_complete {
         panic!("failed to complete action in {} trips", MAX_TRIPS);
+    } else {
+        // We handily get a description of actions for free!
+        previous_actions.join("\n")
     }
 }
 
-/// Sends the given prompt to the LLM and breaks its response into a description of the
-/// action it has taken to further the user's command and the script that will take that
-/// action.
-async fn get_llm_response(prompt: String) -> (String, String) {
-    let response = OpenAiApi::call(&prompt).await.unwrap();
+/// Sends the given prompt to the LLM and parses its response into a group of actions
+/// to be taken on the page.
+async fn get_llm_response(prompt: &str) -> ActionGroup {
+    let response = OpenAiApi::call(prompt).await.unwrap();
+    log(&response);
     // Define a regular expression for matching JS code fence
-    let re = Regex::new(r"```js\n([\s\S]+?)\n```").unwrap();
+    let re = Regex::new(r"```(.*)\n([\s\S]+?)\n```").unwrap();
 
     // Attempt to find a match in the response
     if let Some(captures) = re.captures(&response) {
-        // Extract code and description
-        let code = captures.get(1).unwrap().as_str();
-        let remaining_response = &response[captures.get(0).unwrap().end()..].trim();
+        let mut group = ActionGroup::default();
 
-        (remaining_response.to_string(), code.to_string())
+        let mut actions = captures.get(2).unwrap().as_str().trim().lines().peekable();
+        while let Some(action_str) = actions.next() {
+            // No action has more than three parameters
+            let mut parts = action_str.splitn(3, ' ');
+            // Guaranteed to be at least one part
+            let action_ty = parts.next().unwrap();
+
+            if action_ty == "CLICK" {
+                let id = parts
+                    .next()
+                    .expect("expected id in click stage");
+                let id = id.strip_prefix('[').unwrap_or(id).strip_suffix(']').unwrap_or(id);
+                let id = id.parse().expect("expected integer id");
+
+                group.add(Action::Click { id })
+            } else if action_ty == "FILL" {
+                let id = parts.next().expect("expected id in fill stage");
+                let id = id.strip_prefix('[').unwrap_or(id).strip_suffix(']').unwrap_or(id);
+                let id = id.parse().expect("expected integer id");
+                let text = parts.next().expect("expected text in fill stage");
+                let text = text.strip_prefix('\'').map(|t| t.strip_suffix('\'')).flatten().expect("expected text in fill stage to be single-quoted");
+
+                group.add(Action::Fill { id, text: text.to_string() })
+            } else if action_ty == "WAIT" {
+                // We've reached a waitpoint, ignore everything from here on. We can't
+                // stop the LLM from generating this without it getting panicky about
+                // whether or not it needs to do anything more, so we let it generate
+                // garbage with ID placeholders and then calmly ignore it, telling it
+                // later what it's already done and letting it generate sensible code
+                // once it's seen the updated state of the page.
+                //
+                // Importantly, we should only register this as a legitimate wait-point
+                // if the LLM has *tried* to do something afterward. If it's just being
+                // cautious, we shouldn't do anything.
+                if actions.peek().is_some() {
+                    // The parameter to the "WAIT" action is a description of everything
+                    // done so far.
+                    let description = parts.collect::<Vec<_>>().join(" ");
+                    if description.is_empty() {
+                        panic!("expected description in wait stage");
+                    }
+                    group.description = description.trim().to_string();
+                    group.complete = false;
+                    break;
+                }
+            } else if action_ty == "FINISH" {
+                let description = parts.collect::<Vec<_>>().join(" ");
+                if description.is_empty() {
+                    panic!("expected description in wait stage");
+                }
+                group.description = description.trim().to_string();
+                group.complete = true;
+
+                if actions.peek().is_some() {
+                    panic!("found stages after finish")
+                }
+            }
+        }
+
+        group
     } else {
         log(&response);
         panic!("invalid response from llm");
+    }
+}
+
+/// An action we should take on the page.
+#[derive(Debug)]
+enum Action {
+    /// Click an element. This will be done using the `.click()` method.
+    Click {
+        /// The unique ID of the element to click.
+        id: u32,
+    },
+    /// Fill in an input. This will be done using user-style keyboard events to avoid
+    /// interfering with reactivity frameworks.
+    Fill {
+        /// The unique ID of the element to fill out.
+        id: u32,
+        /// The text to fill it out with.
+        text: String,
+    },
+}
+impl Action {
+    async fn execute(&self, dom_id_map: &HashMap<u32, String>, tab_id: u32) {
+        match &self {
+            Self::Click { id } => {
+                let query_selector = dom_id_map.get(id).expect("found invalid id");
+                click_element(tab_id, &query_selector).await;
+            },
+            Self::Fill { id, text } => {
+                let query_selector = dom_id_map.get(id).expect("found invalid id");
+                fill_element(tab_id, &query_selector, text).await;
+            },
+        }
+    }
+}
+
+/// A group of actions, with a possible description of them.
+#[derive(Debug)]
+struct ActionGroup {
+    /// The actions in this group.
+    actions: Vec<Action>,
+    /// The description of the actions taken.
+    description: String,
+    /// Whether or not we're done with the whole action yet.
+    complete: bool,
+}
+impl Default for ActionGroup {
+    fn default() -> Self {
+        Self {
+            actions: Vec::new(),
+            description: String::new(),
+            // We'll assume we're done in case we don't get `FINISH`
+            complete: true,
+        }
+    }
+}
+impl ActionGroup {
+    fn add(&mut self, action: Action) {
+        self.actions.push(action);
+    }
+    async fn execute(&self, dom_id_map: &HashMap<u32, String>, tab_id: u32) {
+        for action in &self.actions {
+            action.execute(dom_id_map, tab_id).await;
+        }
     }
 }
