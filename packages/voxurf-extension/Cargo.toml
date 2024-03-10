@@ -6,19 +6,18 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+thiserror = "1"
+voxurf = { version = "0.1.0", path = "../voxurf" }
+serde = { version = "1", features = [ "derive" ] }
+serde_json = "1"
+gloo-net = "0.5"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+serde-wasm-bindgen = "0.6"
+
 sycamore = { version = "0.8", features = [ "suspense" ] }
 sycamore-router = "0.8.0"
-wasm-bindgen = "0.2"
-js-sys = "0.3"
-wasm-bindgen-futures = "0.4"
-voxurf = { version = "0.1.0", path = "../voxurf" }
 console_error_panic_hook = "0.1"
-serde = { version = "1", features = [ "derive" ] }
-serde-wasm-bindgen = "0.6"
-regex = "1"
-gloo-net = "0.5"
-serde_json = "1"
-web-sys = "0.3"
 
 [lib]
 crate-type = [ "cdylib", "rlib" ]

@@ -8,7 +8,7 @@ pub enum Error {}
 #[derive(Debug, Error)]
 pub enum ExecutionError {
     #[error("model returned id {id}, but no such id exists in the executor's id map (likely hallucination)")]
-    IdNotFound { id: u32 },
+    IdNotFound { id: usize },
     #[error("element tree did not stabilise in {timeout_ms}")]
     TreeStabilisationTimeout { timeout_ms: u32 },
     #[error("tree did not update at model-designated waitpoint after {timeout_ms} (either an error has occurred in the page or the model incorrectly estimated when the page would update)")]

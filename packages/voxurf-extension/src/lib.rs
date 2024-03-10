@@ -1,11 +1,13 @@
-mod command;
-mod openai;
+mod compute_tree;
+mod glue;
+mod interface;
+mod openai_model;
 
+use crate::{interface::WebExtensionInterface, openai_model::OpenAiModel};
 use gloo_net::http::Request;
 use sycamore::prelude::*;
+use voxurf::{Executor, ExecutorOpts};
 use wasm_bindgen::prelude::*;
-
-use crate::command::execute_command;
 
 #[wasm_bindgen]
 pub fn main() {
@@ -25,7 +27,20 @@ enum AppState {
 }
 
 #[component]
-fn App<G: Html>(cx: Scope) -> View<G> {
+async fn App<'a, G: Html>(cx: Scope<'a>) -> View<G> {
+    let interface = WebExtensionInterface::new().await;
+    let model = OpenAiModel::new(&env!("OPENAI_API_KEY"));
+    let executor = Executor::new(
+        &interface,
+        &model,
+        // TODO Make these all configurable
+        ExecutorOpts {
+            max_round_trips: 5,
+            tree_poll_interval_ms: 50,
+            stability_threshold_ms: 250,
+            stability_timeout_ms: 10_000,
+        },
+    );
     let state = create_signal(cx, AppState::Idle);
 
     view! { cx,
@@ -54,7 +69,11 @@ fn App<G: Html>(cx: Scope) -> View<G> {
                                 // everything in the execution phase
                                 state.set(AppState::Executing);
                                 let command = stop_recording().await;
-                                execute_command("Go to the profile section and change my name to John.").await;
+
+                                // Execute the user's command
+                                interface.pre_execute().await;
+                                executor.execute_command(&command).await;
+                                interface.post_execute().await;
                             },
                             AppState::Executing => unreachable!(),
                         }
@@ -84,10 +103,7 @@ async fn stop_recording() -> String {
         .await
         .unwrap();
     assert_eq!(resp.status(), 200);
-    resp
-        .text()
-        .await
-        .unwrap()
+    resp.text().await.unwrap()
 }
 
 // #[component]

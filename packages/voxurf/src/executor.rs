@@ -1,11 +1,10 @@
 use crate::{
     error::{ActionParseError, ExecutionError},
     interface::Interface,
-    model::Model,
+    model::{Model, id_to_selector},
     sleep,
     tree::Tree,
 };
-use std::collections::HashMap;
 
 /// The prompt used for the model. This is universal across all models, and optimised for the
 /// GPT family.
@@ -20,11 +19,6 @@ pub struct Executor<'i, 'm, I: Interface, M: Model> {
     model: &'m M,
     /// Options for the executor.
     opts: ExecutorOpts,
-
-    /// A map of lightweight internal element IDs to heavyweight interface selectors. This
-    /// is done to simplify the API and minimise the load of passing full-blown selectors to
-    /// the model (which usually works better with integer IDs).
-    id_map: HashMap<u32, I::Selector>,
 }
 impl<'i, 'm, I: Interface, M: Model> Executor<'i, 'm, I, M> {
     /// Creates a new executor against the given interface, using the given model and options.
@@ -42,7 +36,6 @@ impl<'i, 'm, I: Interface, M: Model> Executor<'i, 'm, I, M> {
             interface,
             model,
             opts,
-            id_map: HashMap::new(),
         }
     }
 
@@ -91,7 +84,7 @@ impl<'i, 'm, I: Interface, M: Model> Executor<'i, 'm, I, M> {
             // Construct the prompt to send to the model
             let mut tree_str = String::new();
             for node in &tree.roots {
-                tree_str.push_str(&node.to_string(0));
+                tree_str.push_str(&node.to_string(0, &tree.selectors));
                 tree_str.push('\n');
             }
             let prompt = PROMPT
@@ -139,7 +132,7 @@ impl<'i, 'm, I: Interface, M: Model> Executor<'i, 'm, I, M> {
             // Parse the actions into a group of actions
             let actions = ActionGroup::parse_action_strings(&instructions)?;
             for action in actions.actions {
-                self.execute_action(action).await?;
+                self.execute_action(action, &tree.selectors).await?;
             }
             previous_actions.push(actions.description);
 
@@ -161,12 +154,12 @@ impl<'i, 'm, I: Interface, M: Model> Executor<'i, 'm, I, M> {
 
     /// Executes the given action with this executor. This might fail if given an action with an
     /// invalid internal ID, which would be a case of model hallucination.
-    async fn execute_action(&self, action: Action) -> Result<(), ExecutionError> {
+    ///
+    /// This takes a list of all selectors in the tree for decoding the IDs.
+    async fn execute_action(&self, action: Action, selectors: &Vec<I::Selector>) -> Result<(), ExecutionError> {
         match action {
             Action::Click { id } => {
-                let selector = self
-                    .id_map
-                    .get(&id)
+                let selector = id_to_selector(id, selectors)
                     .ok_or(ExecutionError::IdNotFound { id })?;
                 self.interface
                     .primary_click_element(selector)
@@ -174,9 +167,7 @@ impl<'i, 'm, I: Interface, M: Model> Executor<'i, 'm, I, M> {
                     .map_err(|err| ExecutionError::InterfaceError { source: err.into() })?;
             }
             Action::Type { id, text } => {
-                let selector = self
-                    .id_map
-                    .get(&id)
+                let selector = id_to_selector(id, selectors)
                     .ok_or(ExecutionError::IdNotFound { id })?;
                 self.interface
                     .type_into_element(selector, &text)
@@ -203,7 +194,7 @@ impl<'i, 'm, I: Interface, M: Model> Executor<'i, 'm, I, M> {
     ///
     /// Somewhat unorthodox for Rust, this will put the new tree in `last_tree`,
     /// handling the conditions that the tree didn't stabilise or that it didn't change.
-    async fn get_stable_tree(&self, last_tree: &mut Tree) -> Result<(), ExecutionError> {
+    async fn get_stable_tree(&self, last_tree: &mut Tree<I::Selector>) -> Result<(), ExecutionError> {
         // Calculating this like so lets the user specify everything in milliseconds,
         // but we only have to use one timer
         let num_iters_stable = self.opts.stability_threshold_ms / self.opts.tree_poll_interval_ms;
@@ -284,18 +275,18 @@ pub struct ExecutorOpts {
 }
 
 /// An action we should take on an interface. These are internal to executors,
-/// and use their internal element IDs.
+/// and use IDs relative to an internal map (which is *not* shared with interfaces).
 #[derive(Debug)]
 enum Action {
     /// Click an element.
     Click {
         /// The unique ID of the element to click.
-        id: u32,
+        id: usize,
     },
     /// Type on an element.
     Type {
         /// The unique ID of the element to fill out.
-        id: u32,
+        id: usize,
         /// The text to fill it out with.
         text: String,
     },

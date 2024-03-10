@@ -2093,17 +2093,15 @@ version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
  "gloo-net",
- "js-sys",
- "regex",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
  "sycamore",
  "sycamore-router",
+ "thiserror",
  "voxurf",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "web-sys",
 ]
 
 [[package]]

@@ -7,6 +7,7 @@ mod tree;
 pub use executor::{Executor, ExecutorOpts};
 pub use interface::Interface;
 pub use model::Model;
+pub use tree::{Tree, Node};
 
 #[cfg(target_arch = "wasm32")]
 async fn sleep(ms: u64) {
@@ -22,3 +23,4 @@ async fn sleep(ms: u64) {
 
     sleep(Duration::from_millis(ms)).await;
 }
+
