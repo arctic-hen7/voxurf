@@ -1,3 +1,5 @@
+use std::future::Future;
+
 use crate::tree::Tree;
 
 /// The core trait in Voxurf, which allows interacting with arbitrary interfaces.
@@ -15,18 +17,21 @@ pub trait Interface {
     type Error: std::error::Error + 'static;
 
     /// Clicks the given element.
-    async fn primary_click_element(&self, selector: &Self::Selector) -> Result<(), Self::Error>;
+    fn primary_click_element(
+        &self,
+        selector: &Self::Selector,
+    ) -> impl Future<Output = Result<(), Self::Error>>;
     /// Types the given text into the given element. This may entail creating a focus
     /// state, but such information shoudl be abstracted from Voxurf.
-    async fn type_into_element(
+    fn type_into_element(
         &self,
         selector: &Self::Selector,
         text: &str,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>>;
     /// Computes the tree of relevant elements for this interface. This should be a low-latency
     /// operation, and care should be taken to ensure this operates as quickly as feasibly
     /// possible.
-    async fn compute_tree(&self) -> Result<Tree<Self::Selector>, Self::Error>;
+    fn compute_tree(&self) -> impl Future<Output = Result<Tree<Self::Selector>, Self::Error>>;
 
     // TODO Announcement functions
 }

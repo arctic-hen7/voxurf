@@ -3,7 +3,9 @@ mod glue;
 mod interface;
 mod openai_model;
 
-use crate::{interface::WebExtensionInterface, openai_model::OpenAiModel};
+pub use interface::{WebExtensionInterface, WebExtensionInterfaceError};
+pub use openai_model::{OpenAiModel, OpenAiModelError};
+
 use gloo_net::http::Request;
 use sycamore::prelude::*;
 use voxurf::{Executor, ExecutorOpts};
@@ -28,18 +30,27 @@ enum AppState {
 
 #[component]
 async fn App<'a, G: Html>(cx: Scope<'a>) -> View<G> {
-    let interface = WebExtensionInterface::new().await;
-    let model = OpenAiModel::new(&env!("OPENAI_API_KEY"));
-    let executor = Executor::new(
-        &interface,
-        &model,
-        // TODO Make these all configurable
-        ExecutorOpts {
-            max_round_trips: 5,
-            tree_poll_interval_ms: 50,
-            stability_threshold_ms: 250,
-            stability_timeout_ms: 10_000,
-        },
+    // Trick to make IDE complain less and catch real bugs
+    #[cfg(target_arch = "wasm32")]
+    let api_key = env!("OPENAI_API_KEY");
+    #[cfg(not(target_arch = "wasm32"))]
+    let api_key = "dummy";
+
+    let interface = create_ref(cx, WebExtensionInterface::new().await);
+    let model = create_ref(cx, OpenAiModel::new(api_key.to_string()));
+    let executor = create_ref(
+        cx,
+        Executor::new(
+            interface,
+            model,
+            // TODO Make these all configurable
+            ExecutorOpts {
+                max_round_trips: 5,
+                tree_poll_interval_ms: 50,
+                stability_threshold_ms: 250,
+                stability_timeout_ms: 10_000,
+            },
+        ),
     );
     let state = create_signal(cx, AppState::Idle);
 
@@ -72,7 +83,8 @@ async fn App<'a, G: Html>(cx: Scope<'a>) -> View<G> {
 
                                 // Execute the user's command
                                 interface.pre_execute().await;
-                                executor.execute_command(&command).await;
+                                // TODO Proper error handling with interface!
+                                executor.execute_command(&command).await.expect("command execution failed");
                                 interface.post_execute().await;
                             },
                             AppState::Executing => unreachable!(),
@@ -105,38 +117,3 @@ async fn stop_recording() -> String {
     assert_eq!(resp.status(), 200);
     resp.text().await.unwrap()
 }
-
-// #[component]
-// fn DynamicButton<G: Html>(cx: Scope) -> View<G> {
-//     let app_state = create_signal(cx, AppState::Available);
-//     // create_effect(cx, || {});
-//     view! { cx,
-//         (match &*app_state.get() {
-//             AppState::Listening => {
-//                 view! { cx,
-//                     button(disabled=true) {
-//                         // TODO: Need an animation
-//                         img(src="assets/zrolatency_logo_blue_back.png")
-//                         p { "Recording..." }
-//                     }
-//                 }
-//             }
-//             AppState::Processing => {
-//                 view! { cx,
-//                     button(disabled=true) {
-//                         img(src="assets/zrolatency_logo_blue_back.png")
-//                         p { "Processing." }
-//                     }
-
-//                 }
-//             }
-//             AppState::Available => {
-//                 view! { cx,
-//                     button(on:click=|_| {app_state.set(AppState::Listening)}, class="btn-active") {
-//                         img(src="assets/zrolatency_logo_red_back.png", id="button_record")
-//                     }
-//                 }
-//             }
-//         })
-//     }
-// }

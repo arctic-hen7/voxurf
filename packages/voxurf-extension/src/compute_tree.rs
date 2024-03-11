@@ -92,11 +92,10 @@ impl AxNode {
 
 /// The generic representation of a dynamically typed value used by Chrome's accessibility
 /// debugger API.
+///
+/// This does contain a type, but we don't need it.
 #[derive(Deserialize)]
 struct AxValue {
-    /// The type of the value.
-    #[serde(rename = "type")]
-    ty: String,
     /// The value itself, which we interpret using JS semantics (lower-cost in a web extension,
     /// which puts everything through JS anyway).
     #[serde(default = "undefined")]

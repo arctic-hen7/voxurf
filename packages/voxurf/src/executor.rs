@@ -1,7 +1,7 @@
 use crate::{
     error::{ActionParseError, ExecutionError},
     interface::Interface,
-    model::{Model, id_to_selector},
+    model::{id_to_selector, Model},
     sleep,
     tree::Tree,
 };
@@ -156,19 +156,23 @@ impl<'i, 'm, I: Interface, M: Model> Executor<'i, 'm, I, M> {
     /// invalid internal ID, which would be a case of model hallucination.
     ///
     /// This takes a list of all selectors in the tree for decoding the IDs.
-    async fn execute_action(&self, action: Action, selectors: &Vec<I::Selector>) -> Result<(), ExecutionError> {
+    async fn execute_action(
+        &self,
+        action: Action,
+        selectors: &Vec<I::Selector>,
+    ) -> Result<(), ExecutionError> {
         match action {
             Action::Click { id } => {
-                let selector = id_to_selector(id, selectors)
-                    .ok_or(ExecutionError::IdNotFound { id })?;
+                let selector =
+                    id_to_selector(id, selectors).ok_or(ExecutionError::IdNotFound { id })?;
                 self.interface
                     .primary_click_element(selector)
                     .await
                     .map_err(|err| ExecutionError::InterfaceError { source: err.into() })?;
             }
             Action::Type { id, text } => {
-                let selector = id_to_selector(id, selectors)
-                    .ok_or(ExecutionError::IdNotFound { id })?;
+                let selector =
+                    id_to_selector(id, selectors).ok_or(ExecutionError::IdNotFound { id })?;
                 self.interface
                     .type_into_element(selector, &text)
                     .await
@@ -194,7 +198,10 @@ impl<'i, 'm, I: Interface, M: Model> Executor<'i, 'm, I, M> {
     ///
     /// Somewhat unorthodox for Rust, this will put the new tree in `last_tree`,
     /// handling the conditions that the tree didn't stabilise or that it didn't change.
-    async fn get_stable_tree(&self, last_tree: &mut Tree<I::Selector>) -> Result<(), ExecutionError> {
+    async fn get_stable_tree(
+        &self,
+        last_tree: &mut Tree<I::Selector>,
+    ) -> Result<(), ExecutionError> {
         // Calculating this like so lets the user specify everything in milliseconds,
         // but we only have to use one timer
         let num_iters_stable = self.opts.stability_threshold_ms / self.opts.tree_poll_interval_ms;
