@@ -1,19 +1,26 @@
-use gloo_net::http::Request;
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use voxurf::Model;
+use crate::model::Model;
+
+/// The URL to post requests to.
+const MODEL_URL: &str = "https://api.openai.com/v1/chat/completions";
 
 /// An implementations of OpenAI's chat completion system for Voxurf.
 pub struct OpenAiModel {
+    /// The model to use.
     model: String,
+    /// The temperature to use for the model.
     temperature: f32,
+    /// The API key to authenticate with.
     api_key: String,
 }
 impl OpenAiModel {
+    /// Constructs a new OpenAI model with the given API key.
     pub fn new(api_key: String) -> Self {
         Self {
             model: "gpt-3.5-turbo".to_string(),
-            temperature: 0.7,
+            temperature: 0.3,
             api_key,
         }
     }
@@ -46,11 +53,11 @@ impl Model for OpenAiModel {
             ],
         };
 
-        let raw_response = Request::post("https://api.openai.com/v1/chat/completions")
+        let client = Client::new();
+        let raw_response = client
+            .post(MODEL_URL)
             .header("Authorization", &format!("Bearer {}", self.api_key))
             .json(&request)
-            // Serialization to JSON can't fail
-            .unwrap()
             .send()
             .await
             .map_err(|err| OpenAiModelError::RequestError { source: err })?
@@ -92,7 +99,7 @@ pub enum OpenAiModelError {
     #[error("failed to send request to openai api")]
     RequestError {
         #[source]
-        source: gloo_net::Error,
+        source: reqwest::Error,
     },
     #[error("failed to parse response from openai api")]
     ResponseParseFailed {

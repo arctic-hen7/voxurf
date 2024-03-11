@@ -7,9 +7,22 @@ edition = "2021"
 
 [dependencies]
 thiserror = "1"
+reqwest = { version = "0.11", features = [ "json" ], optional = true }
+serde = { version = "1", features = [ "derive" ], optional = true }
+serde_json = { version = "1", optional = true }
+
+wasm-bindgen = "*"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 gloo-timers = { version = "0.3", features = [ "futures" ] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1", features = [ "time" ] }
+
+[dev-dependencies]
+tokio = { version = "1", features = [ "macros" ] }
+
+[features]
+openai-model = [ "reqwest", "serde", "serde_json" ]
+# TODO
+default = [ "openai-model" ]

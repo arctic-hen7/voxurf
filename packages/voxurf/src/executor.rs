@@ -10,6 +10,12 @@ use crate::{
 /// GPT family.
 static PROMPT: &str = include_str!("prompt.txt");
 
+#[wasm_bindgen::prelude::wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+}
+
 /// A system for executing natural-language commands against an interface.
 pub struct Executor<'i, 'm, I: Interface, M: Model> {
     /// The interface against which the actions will be executed.
@@ -88,7 +94,7 @@ impl<'i, 'm, I: Interface, M: Model> Executor<'i, 'm, I, M> {
                 tree_str.push('\n');
             }
             let prompt = PROMPT
-                .replace("{{ tree_text }}", &tree_str)
+                .replace("{{ tree_text }}", tree_str.trim())
                 .replace("{{ user_command }}", command)
                 .replace(
                     "{{ previous_actions }}",
@@ -116,6 +122,8 @@ impl<'i, 'm, I: Interface, M: Model> Executor<'i, 'm, I, M> {
                 .prompt(&prompt)
                 .await
                 .map_err(|err| ExecutionError::ModelError { source: err.into() })?;
+            log(&prompt);
+            log(&response_str);
             let mut instructions = Vec::new();
             let mut in_code_fence = false;
             for line in response_str.lines() {
@@ -124,7 +132,7 @@ impl<'i, 'm, I: Interface, M: Model> Executor<'i, 'm, I, M> {
                     break;
                 } else if in_code_fence {
                     instructions.push(line);
-                } else if line == "```" {
+                } else if line.starts_with("```") {
                     in_code_fence = true;
                 }
             }

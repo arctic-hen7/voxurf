@@ -1,14 +1,12 @@
 mod compute_tree;
 mod glue;
 mod interface;
-mod openai_model;
 
 pub use interface::{WebExtensionInterface, WebExtensionInterfaceError};
-pub use openai_model::{OpenAiModel, OpenAiModelError};
 
 use gloo_net::http::Request;
 use sycamore::prelude::*;
-use voxurf::{Executor, ExecutorOpts};
+use voxurf::{Executor, ExecutorOpts, OpenAiModel};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -84,7 +82,7 @@ async fn App<'a, G: Html>(cx: Scope<'a>) -> View<G> {
                                 // Execute the user's command
                                 interface.pre_execute().await;
                                 // TODO Proper error handling with interface!
-                                executor.execute_command(&command).await.expect("command execution failed");
+                                executor.execute_command("Search for foobar.").await.expect("command execution failed");
                                 interface.post_execute().await;
                             },
                             AppState::Executing => unreachable!(),

@@ -25,3 +25,9 @@ extern "C" {
     /// Disables the debugger DOM API.
     pub async fn dom_disable(tab_id: u32);
 }
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console)]
+    pub fn log(s: &str);
+}

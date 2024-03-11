@@ -2085,8 +2085,12 @@ name = "voxurf"
 version = "0.1.0"
 dependencies = [
  "gloo-timers",
+ "reqwest",
+ "serde",
+ "serde_json",
  "thiserror",
  "tokio",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -2097,7 +2101,6 @@ dependencies = [
  "gloo-net",
  "serde",
  "serde-wasm-bindgen",
- "serde_json",
  "sycamore",
  "sycamore-router",
  "thiserror",

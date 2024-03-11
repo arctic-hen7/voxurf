@@ -2,7 +2,7 @@ use crate::{
     compute_tree::get_ax_tree,
     glue::{
         attach_debugger, click_element, detach_debugger, dom_disable, dom_enable,
-        dom_id_to_selector, fill_element, get_tab_id,
+        dom_id_to_selector, fill_element, get_tab_id, log,
     },
 };
 use thiserror::Error;
