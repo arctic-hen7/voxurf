@@ -82,7 +82,7 @@ async fn App<'a, G: Html>(cx: Scope<'a>) -> View<G> {
                                 // Execute the user's command
                                 interface.pre_execute().await;
                                 // TODO Proper error handling with interface!
-                                executor.execute_command("Search for foobar.").await.expect("command execution failed");
+                                executor.execute_command("Go to information about dichotomy the album.").await.expect("command execution failed");
                                 interface.post_execute().await;
                             },
                             AppState::Executing => unreachable!(),

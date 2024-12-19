@@ -1,0 +1,9 @@
+Let's start a new interaction with a website. Here's a filtered representation of the accessibility tree (showing everything you can interact with):
+
+```text
+{{ tree_text }}
+```
+
+And here's the user's command:
+
+"{{ user_command }}"

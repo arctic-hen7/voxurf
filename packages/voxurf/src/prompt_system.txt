@@ -10,20 +10,3 @@ Note that the CLICK and FILL stages don't take any descriptions, so don't put an
 I also want you to think through what you have to do in detail, using chain-of-thought reasoning, to make sure you comes to the best decision. There shouldn't be WAITs that aren't needed, for example, you should make sure you use FINISH at the end, and you shouldn't use any placeholder element IDs, remembering that what you write is going to be parsed. By walking yourself through the process first, you can get a clearer idea of what it should do.
 
 Be sure that you put all the stages in ONE code fence, and do all the thinking BEFORE that, rather than mixing the two. In the code fence, write each stage on a new line, without numbering or anything else; just the stage and its parameters.
-
-This is the accessibility tree I want you to operate on:
-
-```text
-{{ tree_text }}
-```
-
-And here's the user's command:
-
-"{{ user_command }}"
-
-{{ previous_actions_cutoff }}
-
-This is what's already been done:
-{{ previous_actions }}
-
-Now keep going from there.

@@ -1,0 +1,17 @@
+Thanks! We're now in trip #{{ n_trips }}, and this is what's already been executed (bear in mind these IDs come from all the previous states of the accessibility tree, and probably won't be relevant anymore).
+
+```text
+{{ last_stages }}
+```
+
+Remember, the user's command is:
+
+"{{ user_command }}"
+
+After waiting for the page to update, this is the new state of the accessibility tree.
+
+```text
+{{ tree_text }}
+```
+
+I want you to output the next actions to be completed, just like before, but bearing in mind this time the ones which have already been completed, and what you should do now. Also keep in mind that we're in trip #{{ n_trips }}, which can provide a heuristic for how complex the command should be (if we're in the fifth trip and the user asked to click a single button, you're probably overcomplicating things). Use all the same stages as before.
